@@ -11,7 +11,24 @@ const phases=[
 const skills=["Networking & infrastructure","Linux and Windows administration","Azure administration","AWS administration","Identity & security","Enterprise applications & integration","Automation & Infrastructure as Code","Architecture & consulting"];
 const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{completed:{},mastery:{},projects:{}}}catch{return {completed:{},mastery:{},projects:{}}}};
 let state=load(), selected=D.days[0].id;
-const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
+let supabase=null, cloudUser=null, syncTimer=null, cloudBusy=false;
+const cloudConfig=window.ETIL_SUPABASE_CONFIG||{};
+const cloudStatus=(message)=>{const node=el("cloudStatus");if(node)node.textContent=message;};
+const save=()=>{localStorage.setItem(KEY,JSON.stringify(state));if(cloudUser&&supabase){clearTimeout(syncTimer);cloudStatus("Changes saved on this device · cloud sync pending…");syncTimer=setTimeout(pushCloud,900);}};
+async function pushCloud(){if(!cloudUser||!supabase)return;if(cloudBusy){syncTimer=setTimeout(pushCloud,700);return;}cloudBusy=true;const snapshot=JSON.parse(JSON.stringify(state));try{const {error}=await supabase.from("learning_progress").upsert({user_id:cloudUser.id,progress:snapshot,updated_at:new Date().toISOString()},{onConflict:"user_id"});if(error)throw error;cloudStatus("All changes synced to your cloud account.");}catch(err){cloudStatus("Saved on this device · cloud sync needs attention: "+err.message);}finally{cloudBusy=false;}}
+async function loadCloud(user){cloudUser=user;cloudStatus("Checking your cloud progress…");try{const {data,error}=await supabase.from("learning_progress").select("progress").eq("user_id",user.id).maybeSingle();if(error)throw error;const local=load();if(data&&data.progress){const cloud=data.progress;state={completed:{...(local.completed||{}),...(cloud.completed||{})},mastery:{...(local.mastery||{}),...(cloud.mastery||{})},projects:{...(local.projects||{}),...(cloud.projects||{})}};localStorage.setItem(KEY,JSON.stringify(state));renderAll();cloudStatus("Cloud progress loaded. Local and cloud records were combined; cloud values take priority where entries conflict.");scheduleInitialCloudSave();}else{state=local;cloudStatus("First sync: uploading the progress saved in this browser…");await pushCloud();}}catch(err){cloudStatus("Could not load cloud progress: "+err.message+" · Your browser copy is still safe.");}}
+function scheduleInitialCloudSave(){clearTimeout(syncTimer);syncTimer=setTimeout(pushCloud,500);}
+async function initCloud(){
+const progress=el("progress"), heading=progress.querySelector(".section-head");
+heading.insertAdjacentHTML("afterend",'<article class="panel cloud-panel"><div class="cloud-heading"><div><span class="eyebrow">AUTOMATIC BACKUP</span><h3>Cloud sync</h3><p class="muted">Sign in with your email to keep your learning record available across browsers and devices.</p></div><span class="cloud-mark">☁</span></div><div id="cloudSignedOut" class="cloud-controls"><input id="cloudEmail" type="email" placeholder="Your email address" autocomplete="email"><button class="primary" id="cloudSignIn">Send sign-in link</button></div><div id="cloudSignedIn" class="cloud-controls" hidden><span id="cloudAccount"></span><button class="secondary" id="cloudSignOut">Sign out</button><button class="secondary" id="cloudSyncNow">Sync now</button></div><p id="cloudStatus" class="muted" aria-live="polite">Connecting to secure cloud storage…</p></article>');
+if(!window.supabase||!cloudConfig.url||!cloudConfig.anonKey){cloudStatus("Cloud configuration is missing. Local saving is still active.");return;}
+supabase=window.supabase.createClient(cloudConfig.url,cloudConfig.anonKey);
+el("cloudSignIn").onclick=async()=>{const email=el("cloudEmail").value.trim();if(!email){cloudStatus("Enter your email address first.");return;}el("cloudSignIn").disabled=true;cloudStatus("Sending a secure sign-in link…");const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href}});el("cloudSignIn").disabled=false;cloudStatus(error?"Could not send sign-in link: "+error.message:"Check your inbox for the sign-in link. Open it in this browser to connect your progress.");};
+el("cloudSignOut").onclick=async()=>{const {error}=await supabase.auth.signOut();if(error)cloudStatus("Sign-out failed: "+error.message);};
+el("cloudSyncNow").onclick=()=>{cloudStatus("Syncing your latest progress…");pushCloud();};
+supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){cloudUser=null;el("cloudSignedOut").hidden=false;el("cloudSignedIn").hidden=true;cloudStatus("Signed out. Your progress remains saved on this device.");}else if(session&&session.user){el("cloudSignedOut").hidden=true;el("cloudSignedIn").hidden=false;el("cloudAccount").textContent="Signed in as "+session.user.email;setTimeout(()=>loadCloud(session.user),0);}});
+const {data,error}=await supabase.auth.getSession();if(error){cloudStatus("Could not check sign-in status: "+error.message);return;}if(data.session){el("cloudSignedOut").hidden=true;el("cloudSignedIn").hidden=false;el("cloudAccount").textContent="Signed in as "+data.session.user.email;await loadCloud(data.session.user);}else{cloudStatus("Not signed in. Local saving is active; sign in to enable automatic cloud backup.");}
+}
 const el=id=>document.getElementById(id);
 function goto(page){document.querySelectorAll(".page").forEach(x=>x.classList.toggle("active",x.id===page));document.querySelectorAll(".navbtn").forEach(x=>x.classList.toggle("active",x.dataset.page===page));window.scrollTo({top:0,behavior:"smooth"});el("nav").classList.remove("open");}
 document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.page)));
@@ -33,4 +50,5 @@ el("importFile").onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let
 el("resetBtn").onclick=()=>{if(confirm("Reset all saved progress, mastery ratings and project completion on this browser? Export a backup first if you may need it.")){state={completed:{},mastery:{},projects:{}};save();renderAll();}};
 function renderAll(){renderDashboard();renderDays();renderProjects();renderResources();renderGlossary();renderMastery();}
 renderAll();
+initCloud();
 })();
