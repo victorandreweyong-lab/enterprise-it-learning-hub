@@ -5,7 +5,22 @@
 <meta name="theme-color" content="#102a43"><title>Enterprise IT Skills Lab</title>
 <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="auth-required">
+<div id="authGate" class="auth-gate">
+  <div class="auth-card">
+    <div class="brand-mark auth-brand">IT</div>
+    <span class="eyebrow">YOUR LEARNING WORKSPACE</span>
+    <h1 id="authTitle">Welcome back</h1>
+    <p id="authIntro">Sign in to continue your Enterprise IT Skills Lab journey. Your progress will sync automatically.</p>
+    <form id="authForm" class="auth-form">
+      <label for="authEmail">Email address</label><input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+      <label for="authPassword">Password</label><input id="authPassword" type="password" placeholder="Enter your password" autocomplete="current-password" required>
+      <button class="primary" id="authSubmit" type="submit">Sign in</button>
+    </form>
+    <div class="auth-links"><button type="button" id="authCreate">Create an account</button><button type="button" id="authForgot">Forgot password?</button></div>
+    <p id="authStatus" class="muted" aria-live="polite">Secure sign-in powered by Supabase.</p>
+  </div>
+</div>
 <header class="topbar">
   <div class="brand"><div class="brand-mark">IT</div><div><strong>Enterprise IT Skills Lab</strong><small>Six-month practical learning journey</small></div></div>
   <button class="mobile-menu" id="menuBtn" aria-label="Toggle navigation">☰</button>
