@@ -30,6 +30,7 @@ supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){cloud
 const {data,error}=await supabase.auth.getSession();if(error){cloudStatus("Could not check sign-in status: "+error.message);return;}if(data.session){el("cloudSignedOut").hidden=true;el("cloudSignedIn").hidden=false;el("cloudAccount").textContent="Signed in as "+data.session.user.email;await loadCloud(data.session.user);}else{cloudStatus("Not signed in. Local saving is active; sign in to enable automatic cloud backup.");}
 }
 const el=id=>document.getElementById(id);
+initCloud();
 function goto(page){document.querySelectorAll(".page").forEach(x=>x.classList.toggle("active",x.id===page));document.querySelectorAll(".navbtn").forEach(x=>x.classList.toggle("active",x.dataset.page===page));window.scrollTo({top:0,behavior:"smooth"});el("nav").classList.remove("open");}
 document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.page)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.goto)));
@@ -50,5 +51,4 @@ el("importFile").onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let
 el("resetBtn").onclick=()=>{if(confirm("Reset all saved progress, mastery ratings and project completion on this browser? Export a backup first if you may need it.")){state={completed:{},mastery:{},projects:{}};save();renderAll();}};
 function renderAll(){renderDashboard();renderDays();renderProjects();renderResources();renderGlossary();renderMastery();}
 renderAll();
-initCloud();
 })();
