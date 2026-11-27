@@ -20,3 +20,5 @@
 .auth-links button{border:0;background:none;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;padding:4px 0}
 #authStatus{margin-top:18px;min-height:20px}
 .auth-form button:disabled{opacity:.6;cursor:wait}
+
+body.auth-required>header,body.auth-required>main,body.auth-required>footer{display:none}
