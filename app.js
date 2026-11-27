@@ -21,9 +21,9 @@ function scheduleInitialCloudSave(){clearTimeout(syncTimer);syncTimer=setTimeout
 async function initCloud(){
 const progress=el("progress"), heading=progress.querySelector(".section-head");
 heading.insertAdjacentHTML("afterend",'<article class="panel cloud-panel"><div class="cloud-heading"><div><span class="eyebrow">AUTOMATIC BACKUP</span><h3>Cloud sync</h3><p class="muted">Your learning record is automatically backed up while you are signed in.</p></div><span class="cloud-mark">☁</span></div><div id="cloudSignedIn" class="cloud-controls"><span id="cloudAccount"></span><button class="secondary" id="cloudSignOut">Sign out</button><button class="secondary" id="cloudSyncNow">Sync now</button></div><p id="cloudStatus" class="muted" aria-live="polite">Connecting to secure cloud storage…</p></article>');
+const authStatus=message=>{const node=el("authStatus");if(node)node.textContent=message;};
 if(!window.supabase||!cloudConfig.url||!cloudConfig.anonKey){authStatus("Cloud configuration is missing. Please contact the site administrator.");return;}
 supabase=window.supabase.createClient(cloudConfig.url,cloudConfig.anonKey);
-const authStatus=message=>{const node=el("authStatus");if(node)node.textContent=message;};
 const showApp=()=>{document.body.classList.remove("auth-required");el("authGate").hidden=true;};
 const showAuth=()=>{document.body.classList.add("auth-required");el("authGate").hidden=false;};
 const setBusy=busy=>{el("authSubmit").disabled=busy;el("authSubmit").textContent=busy?"Please wait…":"Sign in";};
@@ -35,7 +35,7 @@ el("cloudSyncNow").onclick=()=>{cloudStatus("Syncing your latest progress…");p
 supabase.auth.onAuthStateChange((event,session)=>{
 if(event==="SIGNED_OUT"){cloudUser=null;showAuth();cloudStatus("Signed out. Your progress remains saved on this device.");}
 else if(session&&session.user){showApp();el("cloudAccount").textContent="Signed in as "+session.user.email;if(cloudUser?.id!==session.user.id)setTimeout(()=>loadCloud(session.user),0);}
-if(event==="PASSWORD_RECOVERY"){showAuth();el("authTitle").textContent="Set a new password";el("authIntro").textContent="Choose a new password for your account.";el("authPassword").autocomplete="new-password";el("authSubmit").textContent="Update password";el("authForm").onsubmit=async e=>{e.preventDefault();const {error}=await supabase.auth.updateUser({password:el("authPassword").value});authStatus(error?"Could not update password: "+error.message:"Password updated. You can now sign in.");if(!error){el("authTitle").textContent="Welcome back";el("authSubmit").textContent="Sign in";}};}
+if(event==="PASSWORD_RECOVERY"){showAuth();el("authTitle").textContent="Set a new password";el("authIntro").textContent="Choose a new password for your account.";el("authPassword").autocomplete="new-password";el("authSubmit").textContent="Update password";el("authForm").onsubmit=async e=>{e.preventDefault();const {error}=await supabase.auth.updateUser({password:el("authPassword").value});authStatus(error?"Could not update password: "+error.message:"Password updated. You can now sign in.");if(!error){authStatus("Password updated. You are now signed in.");showApp();}};}
 });
 const {data,error}=await supabase.auth.getSession();
 if(error){showAuth();authStatus("Could not check sign-in status: "+error.message);return;}
